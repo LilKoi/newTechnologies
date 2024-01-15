@@ -22,15 +22,11 @@ class PositionService
                 }
             ])
             ->get();
-
         return $categories->mapWithKeys(function ($category, $index) {
-            $minValue = null;
-            $category->childs->each(function ($child) use (&$minValue) {
+            $minValue = $category->childs->reduce(function ($min, $child) {
                 $childMinValue = $child->positions->min('value');
-                if ($minValue === null || ($childMinValue !== null && $childMinValue < $minValue)) {
-                    $minValue = $childMinValue;
-                }
-            });
+                return $min === null || ($childMinValue !== null && $childMinValue < $min) ? $childMinValue : $min;
+            }, null);
 
             return [$category->name => $minValue];
         });
