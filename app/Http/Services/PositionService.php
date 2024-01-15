@@ -15,15 +15,24 @@ class PositionService
     public function getPositions(string $date)
     {
         $categories = Category::query()
-            ->withMin([
-                'positions' =>  fn ($builder)  => $builder->where('date', $date)
-            ], 'value')
-            ->has('parent')
+            ->has('childs')
+            ->with([
+                'childs.positions' => function ($builder) use ($date) {
+                    $builder->where('date', $date);
+                }
+            ])
             ->get();
+
         return $categories->mapWithKeys(function ($category, $index) {
-            return [
-                $category->parent->name => $category->positions_min_value,
-            ];
+            $minValue = null;
+            $category->childs->each(function ($child) use (&$minValue) {
+                $childMinValue = $child->positions->min('value');
+                if ($minValue === null || ($childMinValue !== null && $childMinValue < $minValue)) {
+                    $minValue = $childMinValue;
+                }
+            });
+
+            return [$category->name => $minValue];
         });
     }
 }
